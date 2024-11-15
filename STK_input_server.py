@@ -49,7 +49,9 @@ bindings    = [ ['UP', 'up', keyboard.press_and_release],
                 ['P_ACCELERATE', 'up', keyboard.press],
                 ['R_ACCELERATE', 'up', keyboard.release],
                 ['P_BRAKE', 'down', keyboard.press],
-                ['R_BRAKE', 'down', keyboard.release]
+                ['R_BRAKE', 'down', keyboard.release],
+                ['P_NITRO', 'n', keyboard.press],
+                ['R_NITRO', 'n', keyboard.release]
                 ]
 
 commands = [b[0] for b in bindings]
