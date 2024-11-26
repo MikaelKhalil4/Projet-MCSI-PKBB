@@ -1,4 +1,3 @@
-from controller import Controller
 from osc_server import OSCServer
 from time import sleep
 
