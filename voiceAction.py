@@ -55,16 +55,14 @@ class AudioProcessor:
         """Check if target word is in the recognized text"""
         current_time = time.time()
         if self.target_word in text.lower():
-            # Check if enough time has passed since last detection
+            # Immediate detection: send command if cooldown allows
             if current_time - self.last_detection_time >= self.detection_cooldown:
-                if not is_partial:  # Only trigger on final results
-                    print(f"\nDETECTED: '{self.target_word.upper()}'!")
-                    print(f"Full text: {text}")
-                    print("\nStill listening... (Press Ctrl+C to stop)")
-                    
-                    # Send command to server
-                    self.send_command()
-                    self.last_detection_time = current_time
+                print(f"\nINSTANT DETECTION: '{self.target_word.upper()}'!")
+                print(f"Recognized text: {text}")
+                
+                # Send command to server immediately
+                self.send_command()
+                self.last_detection_time = current_time
 
     def send_command(self):
         """Send the 'FIRE' command to the server"""
@@ -77,7 +75,6 @@ class AudioProcessor:
     def run(self):
         """Main run loop"""
         try:
-            # Configure and start audio stream
             stream = sd.RawInputStream(
                 samplerate=16000,
                 blocksize=8000,
@@ -106,7 +103,7 @@ class AudioProcessor:
 def main():
     try:
         # Update this path to your model location
-        model_path = "model\vosk-model-small-en-us-0.15"
+        model_path = r"C:\Users\DELL\Desktop\Yassine\Projet-MCSI-PKBB\model\vosk-model-small-en-us-0.15"
         processor = AudioProcessor(model_path)
         processor.run()
     except Exception as e:
@@ -115,3 +112,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+ 
