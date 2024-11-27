@@ -1,12 +1,10 @@
-from controller import Controller
 from osc_server import OSCServer
 from time import sleep
 
 def main():
-    address = ('localhost', 6006)
-    controller = Controller(address)
-    osc_server = OSCServer(controller)
-    osc_server.bind_callbacks()
+    osc_server = OSCServer()
+    #here should start all everything like face tracking etc
+
 
     try:
         sleep(1000)
