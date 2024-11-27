@@ -8,43 +8,45 @@ import math
 
 last_tap_time = 0
 DOUBLE_TAP_THRESHOLD = 0.5  # Time in seconds between taps to consider it a double tap
+
+#pad
 STEER_THRES = 0.4
 ACCEL_THRES = 0.4
+
+#rotations
 STEER_ANGLE_THRES = 20
+
 ACCEL_ANGLE_THRES = 15
 ACCEL_ANGLE_OFFSET = -50
 
 class OSCServer:
 
-    def __init__(self):
+    def __init__(self,is_collab):
 
         self.osc = OSCThreadServer(default_handler=self.dump)
         self.sock = self.osc.listen(address='127.0.0.1', port=8000, default=True)#c'est le server where the phone need to send its information on
         self.server_address = ('localhost', 6006)#STK_input_server
         self.variable_initialization()
-        self.bind_callbacks()
+        self.is_collab = is_collab
+
+        if(self.is_collab):
+          self.bind_callbacks_collab()
+        else:    
+          self.bind_callbacks_perf()
 
 
-    def bind_callbacks(self):
+    def bind_callbacks_collab(self):
+        self.osc.bind(b'/multisense/orientation/pitch', self.callback_pitch_right_left)
+        self.osc.bind(b'/multisense/orientation/roll', self.callback_roll_acc)
+        
 
-        # # This section is for controlling the game with the pad
-        self.osc.bind(b'/multisense/pad/x', self.callback_x)
-        self.osc.bind(b'/multisense/pad/y', self.callback_y)
-        self.osc.bind(b'/multisense/pad/touchUP', self.callback_touchUP)
+      
 
+    def bind_callbacks_perf(self):
+        self.osc.bind(b'/multisense/orientation/yaw', self.callback_yaw_right_left)
+        self.osc.bind(b'/multisense/pad/x', self.callback_x_lookBack_fire)
+        self.osc.bind(b'/multisense/orientation/yaw', self.callback_yaw_shaker_rescue)
 
-        # # This section is for controlling the game with orientation and firing with double tap
-        # self.osc.bind(b'/multisense/orientation/yaw', self.callback_yaw)
-        # self.osc.bind(b'/multisense/orientation/roll', self.callback_roll)
-        # self.osc.bind(b'/multisense/orientation/pitch', self.callback_pitch)
-
-        ##For Shaker mvt
-        # self.osc.bind(b'/multisense/orientation/yaw', self.callback_yaw_shaker)
-
-        ##For Continues mvt
-        # self.osc.bind(b'/multisense/pad/x', self.callback_x_continuous)
-        # self.osc.bind(b'/multisense/pad/y', self.callback_y_continuous)
-        # self.osc.bind(b'/multisense/pad/touchUP', self.callback_touchUP_continuous)
 
     def dump(self, address, *values):
         """Default handler for unbound OSC messages."""
@@ -101,84 +103,9 @@ class OSCServer:
         if len(data) > 0:
             self.client_socket.sendto(data, self.server_address)
 
-
-
-
-    def callback_x_continuous(self, *values):
-        print("got values for x: {}".format(values))
-        data = b''
-        acceleration = ACCEL.NEUTRAL
-
-        if values[0] < -STEER_THRES:
-            acceleration = ACCEL.DOWN
-        elif values[0] > STEER_THRES:
-            acceleration = ACCEL.UP
-
-        if self.current_accel != ACCEL.NEUTRAL and acceleration == ACCEL.NEUTRAL:
-            if self.current_accel == ACCEL.UP:
-                data = b'R_UP'
-            elif self.current_accel == ACCEL.DOWN:
-                data = b'R_DOWN'
-
-        if self.current_accel == ACCEL.NEUTRAL and acceleration != ACCEL.NEUTRAL:
-            if acceleration == ACCEL.UP:
-                data = b'P_UP'
-            elif acceleration == ACCEL.DOWN:
-                data = b'P_DOWN'
-
-        self.send_data(data)
-        self.current_accel = acceleration
-
-    def callback_y_continuous(self, *values):
-        print("got values for y: {}".format(values))
-        data = b''
-        steering = STEER.NEUTRAL
-
-        if values[0] < -ACCEL_THRES:
-            steering = STEER.LEFT
-        elif values[0] > ACCEL_THRES:
-            steering = STEER.RIGHT
-
-        if self.current_steering != STEER.NEUTRAL and steering == STEER.NEUTRAL:
-            if self.current_steering == STEER.LEFT:
-                data = b'R_LEFT'
-            elif self.current_steering == STEER.RIGHT:
-                data = b'R_RIGHT'
-
-        if self.current_steering == STEER.NEUTRAL and steering != STEER.NEUTRAL:
-            if steering == STEER.LEFT:
-                data = b'P_LEFT'
-            elif steering == STEER.RIGHT:
-                data = b'P_RIGHT'
-
-        self.send_data(data)
-        self.current_steering = steering
-
-    def callback_touchUP_continuous(self, *values):
         
-        data = b''
 
-        if self.current_accel != ACCEL.NEUTRAL:
-            if self.current_accel == ACCEL.UP:
-                data = b'R_UP'
-            elif self.current_accel == ACCEL.DOWN:
-                data = b'R_DOWN'
-        
-        if self.current_steering != STEER.NEUTRAL:
-            if self.current_steering == STEER.LEFT:
-                data = b'R_LEFT'
-            elif self.current_steering == STEER.RIGHT:
-                data = b'R_RIGHT'
-
-        self.send_data(data)
-     
-     
-     
-        
     def process_steering(self,steering):
-        
-        
-
         data = b''
 
         if self.current_steering != STEER.NEUTRAL and steering == STEER.NEUTRAL:
@@ -200,9 +127,6 @@ class OSCServer:
 
     def process_acceleration(self,acceleration):
         data = b''
-
-        
-
         if self.current_accel != ACCEL.NEUTRAL and acceleration == ACCEL.NEUTRAL:
             if self.current_accel == ACCEL.UP:
                 data = b'R_UP'
@@ -224,7 +148,9 @@ class OSCServer:
 
 
 
-    def callback_yaw(self,*values):
+#coolab:
+
+    def callback_pitch_right_left(self,*values):
         steering = STEER.NEUTRAL
 
         angle = values[0]
@@ -235,46 +161,43 @@ class OSCServer:
             steering = STEER.LEFT
 
         self.process_steering(steering)
-    
-    
-    def callback_roll(self,*values):
+
+    def callback_roll_acc(self,*values):
         angle = values[0]
 
         acceleration = ACCEL.NEUTRAL
-
         if angle < ACCEL_ANGLE_OFFSET - ACCEL_ANGLE_THRES:
-            acceleration = ACCEL.DOWN
+            acceleration = ACCEL.NEUTRAL
         elif angle > ACCEL_ANGLE_OFFSET + ACCEL_ANGLE_THRES:
             acceleration = ACCEL.UP
 
         self.process_acceleration(acceleration)
     
-    
-    def callback_pitch(*values):
-        return
-   
-   
-   
-    def callback_double_tap(self, *args):
-        print(f"Touch callback called with args: {args}")
-        current_time = time.time()
-        
-        if args and args[0] > 0:  # If touch count is greater than 0
-            if (current_time - self.last_tap_time) < DOUBLE_TAP_THRESHOLD:
-                self.tap_count += 1
-                if self.tap_count == 2:
-                    print("Double tap detected! Sending FIRE command.")
-                    self.send_data(b'FIRE')
-                    self.tap_count = 0
-            else:
-                self.tap_count = 1
-            
-            self.last_tap_time = current_time
-        else:
-            # Reset tap count if touch ended
-            self.tap_count = 0
-  
-    def callback_yaw_shaker(self, *values):
+#perfo:
+
+    def callback_yaw_right_left(self,*values):
+        steering = STEER.NEUTRAL
+
+        angle = values[0]
+
+        if angle < - STEER_ANGLE_THRES:
+            steering = STEER.RIGHT
+        elif angle > STEER_ANGLE_THRES:
+            steering = STEER.LEFT
+
+        self.process_steering(steering)
+
+    def callback_x_lookBack_fire(self, *values):
+        """Handle pad x-axis input for steering."""
+        x = values[0]
+
+        # Determine steering direction
+        if x < -STEER_THRES:
+            data = b'P_LOOKBACK'
+        elif x > STEER_THRES:
+            data = b'FIRE'
+      
+    def callback_yaw_shaker_rescue(self, *values):
 
         print("Received yaw values: {}".format(values))
         data = b''
@@ -292,6 +215,38 @@ class OSCServer:
 
         self.previous_yaw = current_yaw
         
+
+
+
+
+
+
+
+    
+    
+   
+
+
+        print("Received yaw values: {}".format(values))
+        data = b''
+
+        SHAKE_THRESHOLD = 5.0  # You may need to adjust this value based on your sensor's output
+
+
+        current_yaw = values[0]
+        yaw_difference = abs(current_yaw - self.previous_yaw)
+
+        if yaw_difference > SHAKE_THRESHOLD:
+            data = b'RESCUE'
+            self.send_data(data)
+            print("Shake detected!")
+
+        self.previous_yaw = current_yaw
+        
+
+
+
+
         
     def control_loop(self):
         """Infinite loop running at a target frequency to manage pressed and released commands."""
@@ -388,39 +343,3 @@ class OSCServer:
 
 
 
-    # Callback methods for handling pad inputs
-    def callback_x(self, *values):
-        """Handle pad x-axis input for steering."""
-        x = values[0]
-        self.steering_value = min(abs(x), 1.0)  # Ensure value is between 0 and 1
-
-        # Determine steering direction
-        if x < -STEER_THRES:
-            self.steering_direction = STEER.LEFT
-        elif x > STEER_THRES:
-            self.steering_direction = STEER.RIGHT
-        else:
-            self.steering_direction = STEER.NEUTRAL
-            self.steering_value = 0.0  # No steering
-
-    def callback_y(self, *values):
-        """Handle pad y-axis input for acceleration."""
-        y = values[0]
-        self.accel_value = min(abs(y), 1.0)  # Ensure value is between 0 and 1
-
-        # Determine acceleration direction
-        if y < -ACCEL_THRES:
-            self.accel_direction = ACCEL.DOWN  # Brake
-        elif y > ACCEL_THRES:
-            self.accel_direction = ACCEL.UP  # Accelerate
-        else:
-            self.accel_direction = ACCEL.NEUTRAL
-            self.accel_value = 0.0  # No acceleration
-
-    def callback_touchUP(self, *values):
-        """Handle touch release event to reset controls."""
-        # Reset steering and acceleration when touch is released
-        self.steering_direction = STEER.NEUTRAL
-        self.steering_value = 0.0
-        self.accel_direction = ACCEL.NEUTRAL
-        self.accel_value = 0.0
