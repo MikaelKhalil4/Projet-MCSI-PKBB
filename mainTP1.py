@@ -8,7 +8,7 @@ def main():
     # Validate and convert input to a boolean
     if user_input == "1":
         is_collab = True
-        tracker =FaceTracking(user_ipd=6.3)
+        tracker =FaceTracking()
         tracker.runtracking()
     elif user_input == "0":
         is_collab = False
