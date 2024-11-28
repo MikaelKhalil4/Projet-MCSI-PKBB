@@ -24,7 +24,7 @@ class OSCServer:
     def __init__(self,is_collab):
 
         self.osc = OSCThreadServer(default_handler=self.dump)
-        self.sock = self.osc.listen(address='127.0.0.1', port=8000, default=True)#c'est le server where the phone need to send its information on
+        self.sock = self.osc.listen(address='0.0.0.0', port=8000, default=True)#c'est le server where the phone need to send its information on
         self.server_address = ('localhost', 6006)#STK_input_server
         self.variable_initialization()
         self.is_collab = is_collab
@@ -34,23 +34,18 @@ class OSCServer:
         else:    
           self.bind_callbacks_perf()
 
-
     def bind_callbacks_collab(self):
         self.osc.bind(b'/multisense/orientation/pitch', self.callback_pitch_right_left)
         self.osc.bind(b'/multisense/orientation/roll', self.callback_roll_acc)
-        
-
-      
 
     def bind_callbacks_perf(self):
         self.osc.bind(b'/multisense/orientation/yaw', self.callback_yaw_right_left)
         self.osc.bind(b'/multisense/pad/x', self.callback_x_lookBack_fire)
-        self.osc.bind(b'/multisense/orientation/yaw', self.callback_yaw_shaker_rescue)
-
+        self.osc.bind(b'/multisense/accelerometer/y', self.callback_acceleration_shaker_rescue)
 
     def dump(self, address, *values):
         """Default handler for unbound OSC messages."""
-        print(u'{}: {}'.format(
+        """print(u'{}: {}'.format(
             address.decode('utf8'),
             ', '.join(
                 '{}'.format(
@@ -58,9 +53,7 @@ class OSCServer:
                 )
                 for v in values if values
             )
-        ))
-
-
+        ))"""
 
     def stop(self):
         self.osc.stop()
@@ -68,8 +61,6 @@ class OSCServer:
         self.loop_running = False
         self.control_thread.join()
         self.client_socket.close()
-
-
 
     def variable_initialization(self):
         self.current_steering = STEER.NEUTRAL
@@ -97,16 +88,19 @@ class OSCServer:
         self.control_thread = threading.Thread(target=self.control_loop)
         self.control_thread.start()
 
+        self.accel_buffer = []  # Buffer to store acceleration values for shake detection
+        self.previous_y_accel = None  # To compute the derivative
+        self.last_rescue_time = 0  # Last time the rescue command was sent
+
 
 
     def send_data(self, data):
         if len(data) > 0:
             self.client_socket.sendto(data, self.server_address)
 
-        
-
     def process_steering(self,steering):
         data = b''
+        # print("steering : ",steering)
 
         if self.current_steering != STEER.NEUTRAL and steering == STEER.NEUTRAL:
             if self.current_steering == STEER.LEFT:
@@ -146,8 +140,6 @@ class OSCServer:
 
         self.current_accel = acceleration
 
-
-
 #coolab:
 
     def callback_pitch_right_left(self,*values):
@@ -172,10 +164,11 @@ class OSCServer:
             acceleration = ACCEL.UP
 
         self.process_acceleration(acceleration)
-    
+
 #perfo:
 
     def callback_yaw_right_left(self,*values):
+        # print("Received yaw values: {}".format(values))
         steering = STEER.NEUTRAL
 
         angle = values[0]
@@ -194,9 +187,11 @@ class OSCServer:
         # Determine steering direction
         if x < -STEER_THRES:
             data = b'P_LOOKBACK'
+            # TODO :  Fix this to release the key when the value is back to neutral
         elif x > STEER_THRES:
             data = b'FIRE'
-      
+            # TODO :  Fix this using the SendInstantCommande method
+
     def callback_yaw_shaker_rescue(self, *values):
 
         print("Received yaw values: {}".format(values))
@@ -214,40 +209,44 @@ class OSCServer:
             print("Shake detected!")
 
         self.previous_yaw = current_yaw
-        
 
+    def callback_acceleration_shaker_rescue(self, *values):
+        """Handle acceleration from the smartphone to detect shakes and send rescue command."""
+        DERIVATIVE_THRESHOLD = 3 # The amount of acceleration change required to detect a shake
+        SHAKE_DURATION = 1.0 # Time window to detect shakes
 
+        LAST_RESCUE_TIME = 1.0 # Minimum time between rescue commands
 
+        y_accel = values[0]
 
+        if self.previous_y_accel is not None:
+            # Calculate the change (derivative) in acceleration
+            accel_derivative = abs(y_accel - self.previous_y_accel)
+        else:
+            accel_derivative = 0.0
 
+        self.previous_y_accel = y_accel
 
+        current_time = time.time()
 
-    
-    
-   
+        # Add current derivative and timestamp to the buffer
+        self.accel_buffer.append((current_time, accel_derivative))
 
+        # Remove old values beyond the shake duration
+        self.accel_buffer = [(t, d) for t, d in self.accel_buffer if t >= current_time - SHAKE_DURATION]
 
-        print("Received yaw values: {}".format(values))
-        data = b''
+        # print("Accel : ",str(len(self.accel_buffer))," ",str([round(a,3) for _, a in self.accel_buffer]))
+        # Check for consistent shaking (mean value above the threshold)
 
-        SHAKE_THRESHOLD = 5.0  # You may need to adjust this value based on your sensor's output
+        mean_derivative = sum(a for _, a in self.accel_buffer) / len(self.accel_buffer)
 
+        if len(self.accel_buffer) >= 50 and mean_derivative > DERIVATIVE_THRESHOLD:
+            # Check if last rescue command was sent more than LAST_RESCUE_TIME
+            if current_time - self.last_rescue_time > LAST_RESCUE_TIME:
+                self.last_rescue_time = current_time
+                print("Shake detected!")
+                self.SendInstantCommande("P_RESCUE")
 
-        current_yaw = values[0]
-        yaw_difference = abs(current_yaw - self.previous_yaw)
-
-        if yaw_difference > SHAKE_THRESHOLD:
-            data = b'RESCUE'
-            self.send_data(data)
-            print("Shake detected!")
-
-        self.previous_yaw = current_yaw
-        
-
-
-
-
-        
     def control_loop(self):
         """Infinite loop running at a target frequency to manage pressed and released commands."""
         target_frequency = 60  # Loop frequency in Hz (60Hz or adjust to 120Hz if needed)
@@ -341,5 +340,32 @@ class OSCServer:
             # Reset acceleration direction if released
             self.accel_direction = ACCEL.NEUTRAL
 
+    def SendInstantCommande(self,commande):
+        """Used to send an action command (fire, rescue etc) to the server by first pressing the key then releasing it"""
 
+        DELAY = 0.2 # Delay in seconds before sending the release command
+
+        if commande == "P_RESCUE":
+            data = b'P_RESCUE'
+            self.client_socket.sendto(data, self.server_address)
+            # Programme un envoie de la commande R_RESCUE dans DELAY
+            timer = threading.Timer(DELAY, self.SendInstantCommande, ["R_RESCUE"])
+            timer.start()
+
+        elif commande == "P_FIRE":
+            data = b'P_FIRE'
+            self.client_socket.sendto(data, self.server_address)
+            # Programme un envoie de la commande R_FIRE dans DELAY
+            timer = threading.Timer(DELAY, self.SendInstantCommande, ["R_FIRE"])
+            timer.start()
+
+        elif commande == "R_RESCUE":
+            data = b'R_RESCUE'
+            self.client_socket.sendto(data, self.server_address)
+            has_rescued = False
+
+        elif commande == "R_FIRE":
+            data = b'R_FIRE'
+            self.client_socket.sendto(data, self.server_address)
+            has_fired = False
 
