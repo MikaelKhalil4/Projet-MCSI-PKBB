@@ -7,7 +7,7 @@ import time
 from vosk import Model, KaldiRecognizer
 
 class AudioProcessor:
-    def __init__(self, model_path, target_word="fire", server_address=('localhost', 6006)):
+    def __init__(self, model_path, target_word="fire", server_address=('localhost', 6007)):
         self.model_path = model_path
         self.target_word = target_word.lower()
         self.audio_queue = queue.Queue()
@@ -67,8 +67,11 @@ class AudioProcessor:
     def send_command(self):
         """Send the 'FIRE' command to the server"""
         try:
-            self.sock.sendto(b"FIRE", self.server_address)
+            self.sock.sendto(b"P_FIRE", self.server_address)
+            
             print("Command 'FIRE' sent to server.")
+            time.sleep(1)
+            self.sock.sendto(b"R_FIRE", self.server_address)
         except Exception as e:
             print(f"Failed to send command: {str(e)}", file=sys.stderr)
 

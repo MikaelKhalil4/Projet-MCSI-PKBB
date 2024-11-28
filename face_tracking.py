@@ -340,46 +340,36 @@ def runtracking():
                 print(f"3D position: {pos_x:.2f} - {pos_y:.2f} - {pos_z:.2f}")
 
                 # Head movements mapped to game controls
-                if pos_x > 2:  # Turn right
+                if pos_x > 10:  # Turn right
                     if not previous_right:
-                        send_udp_command("P_RIGHT")  # Press right
+                        send_udp_command("P_LOOKBACK")  # Press right
                         previous_right = True
                     if previous_left:  # Release left if previously pressed
-                        send_udp_command("R_LEFT")
+                        send_udp_command("P_LOOKBACK")
                         previous_left = False
-                elif pos_x < -2:  # Turn left
+                elif pos_x < -10:  # Turn left
                     if not previous_left:
-                        send_udp_command("P_LEFT")  # Press left
+                        send_udp_command("P_LOOKBACK")  # Press left
                         previous_left = True
                     if previous_right:  # Release right if previously pressed
-                        send_udp_command("R_RIGHT")
+                        send_udp_command("P_LOOKBACK")
                         previous_right = False
                 else:  # Head is centered, release both left and right
                     if previous_left:
-                        send_udp_command("R_LEFT")
+                        send_udp_command("R_LOOKBACK")
                         previous_left = False
                     if previous_right:
-                        send_udp_command("R_RIGHT")
+                        send_udp_command("R_LOOKBACK")
                         previous_right = False
 
                 if pos_z < 30:  # Accelerate (close to the camera)
                     if not previous_accelerate:
-                        send_udp_command("P_ACCELERATE")
-                        previous_accelerate = True
-                elif pos_z > 40:  # Brake (far from the camera)
-                    if not previous_brake:
                         send_udp_command("P_BRAKE")
                         previous_brake = True
-                    if previous_accelerate:  # Release accelerate
-                        send_udp_command("R_ACCELERATE")
-                        previous_accelerate = False
                 else:  # Neither brake nor accelerate
                     if previous_brake:
                         send_udp_command("R_BRAKE")
                         previous_brake = False
-                    if previous_accelerate:
-                        send_udp_command("R_ACCELERATE")
-                        previous_accelerate = False
             else:
                 print("Invalid interpupillary distance.")                          
         else:

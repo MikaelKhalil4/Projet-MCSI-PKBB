@@ -6,6 +6,7 @@
 import sys
 import socket
 import keyboard
+import threading
 
 ###############################################################################
 ## Global vars
@@ -18,9 +19,14 @@ RED         = '\033[91m'
 stop        = False
 DEBUG       = False
 
-address     = ('localhost', 6006)
-sock        = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-sock.bind(address)
+address1    = ('localhost', 6006)
+address2    = ('localhost', 6007)
+
+sock1       = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+sock1.bind(address1)
+
+sock2       = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+sock2.bind(address2)
 
 #list of tuples: (received command, keyboard key, keyboard func )
 bindings    = [ ['UP', 'up', keyboard.press_and_release],
@@ -62,6 +68,25 @@ commands = [b[0] for b in bindings]
 
 ###############################################################################
 ## Main
+def handle_socket(sock):
+    global stop
+    while not stop:
+        data, addr = sock.recvfrom(1024)
+        if type(data) is bytes:
+            data = data.decode("utf-8").replace(',', '')
+
+        if data == 'STOPSERVEUR':
+            stop = True
+        else:
+            if data in commands:
+                if DEBUG: print(YELLOW + '\t' + data + WHITE)
+                b = bindings[commands.index(data)]
+                b[2](b[1])
+            else:
+                if DEBUG: print(RED + '\t' + data + WHITE + ' (Unknown)')
+
+###############################################################################
+## Main
 if len(sys.argv) > 1:
     # Reading command line
     for i in range(1, len(sys.argv)):
@@ -70,22 +95,19 @@ if len(sys.argv) > 1:
 
 print()
 print('STK input server started ', end='')
-if DEBUG:   print(GREEN+'(Debug mode)'+WHITE)
-else:       print()
+if DEBUG:   
+    print(GREEN + '(Debug mode)' + WHITE)
+else:       
+    print()
 
-while (not stop):
-    data, addr = sock.recvfrom(1024)
-    if type(data) is bytes:
-        data = data.decode("utf-8").replace(',','')
+# Create threads to handle each socket
+thread1 = threading.Thread(target=handle_socket, args=(sock1,))
+thread2 = threading.Thread(target=handle_socket, args=(sock2,))
 
-    if data == 'STOPSERVEUR':
-        stop = True
-    else:
-        if data in commands:
-            if DEBUG: print(YELLOW+'\t'+data+WHITE)
-            b = bindings[commands.index(data)]
-            b[2](b[1])
-        else:
-            if DEBUG: print(RED+'\t'+data+WHITE+' (Unknown)')
+thread1.start()
+thread2.start()
+
+thread1.join()
+thread2.join()
 
 print('STK input server stopped')
