@@ -165,3 +165,17 @@ class FaceTracking:
 
         self.cap.release()
         cv2.destroyAllWindows()
+
+
+class TrackingResults:
+    tracking_results = None
+
+    def get_result(
+        self,
+        result: vision.FaceDetectorResult,
+        output_image: mp.Image,
+        timestamp_ms: int,
+    ):
+        # Callback function to store the face detection results
+        self.tracking_results = result
+
