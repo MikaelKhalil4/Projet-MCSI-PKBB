@@ -1,5 +1,6 @@
 from osc_server import OSCServer
 from time import sleep
+from  face_tracking import FaceTracking
 
 def main():
     user_input = input("Is collaboration mode enabled? Enter 1 for Yes or 0 for No: ")
@@ -7,8 +8,11 @@ def main():
     # Validate and convert input to a boolean
     if user_input == "1":
         is_collab = True
+        tracker =FaceTracking(user_ipd=6.3)
+        tracker.runtracking()
     elif user_input == "0":
         is_collab = False
+
     else:
         print("Invalid input! Please enter 1 or 0.")
         exit(1)  # Exit the program if the input is invalid
