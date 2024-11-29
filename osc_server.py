@@ -40,7 +40,8 @@ class OSCServer:
 
     def bind_callbacks_perf(self):
         self.osc.bind(b'/multisense/orientation/yaw', self.callback_yaw_right_left)
-        self.osc.bind(b'/multisense/pad/x', self.callback_x_lookBack_fire)
+        self.osc.bind(b'/multisense/pad/x', self.callback_x_touchpad)
+        self.osc.bind(b'/multisense/pad/touchUP', self.callback_touchup)
         self.osc.bind(b'/multisense/accelerometer/y', self.callback_acceleration_shaker_rescue)
 
     def dump(self, address, *values):
@@ -88,9 +89,15 @@ class OSCServer:
         self.control_thread = threading.Thread(target=self.control_loop)
         self.control_thread.start()
 
+        # Shake detection variables
         self.accel_buffer = []  # Buffer to store acceleration values for shake detection
         self.previous_y_accel = None  # To compute the derivative
         self.last_rescue_time = 0  # Last time the rescue command was sent
+
+        # Fire detection
+        self.last_fire_time = 0
+
+        self.is_nitroing= False
 
 
 
@@ -180,35 +187,34 @@ class OSCServer:
 
         self.process_steering(steering)
 
-    def callback_x_lookBack_fire(self, *values):
+    def callback_x_touchpad(self, *values):
         """Handle pad x-axis input for steering."""
+
+        FIRE_WAITING_TIME = 0.5 # Time in seconds to wait before firing again
+
         x = values[0]
 
-        # Determine steering direction
-        if x < -STEER_THRES:
-            data = b'P_LOOKBACK'
-            # TODO :  Fix this to release the key when the value is back to neutral
-        elif x > STEER_THRES:
-            data = b'FIRE'
-            # TODO :  Fix this using the SendInstantCommande method
+        # If x is negative, we pressed right, if positive we pressed left
+        # Right button is assigned to NITRO
+        # Left button is assigned to FIRE
+        # Determine if we need to fire or to use nitro
+        if x < 0:
+            # We nitro while pad is pressed
+            if not self.is_nitroing:
+                self.is_nitroing = True
+                self.send_data(b'P_NITRO')
 
-    def callback_yaw_shaker_rescue(self, *values):
+        elif x > 0:
+            # We fire
+            if time.time() - self.last_fire_time > FIRE_WAITING_TIME:
+                self.last_fire_time = time.time()
+                self.SendInstantCommande("P_FIRE")
 
-        print("Received yaw values: {}".format(values))
-        data = b''
+    def callback_touchup(self, *values):
+        if self.is_nitroing:
+            self.is_nitroing = False
+            self.send_data(b'R_NITRO')
 
-        SHAKE_THRESHOLD = 5.0  # You may need to adjust this value based on your sensor's output
-
-
-        current_yaw = values[0]
-        yaw_difference = abs(current_yaw - self.previous_yaw)
-
-        if yaw_difference > SHAKE_THRESHOLD:
-            data = b'RESCUE'
-            self.send_data(data)
-            print("Shake detected!")
-
-        self.previous_yaw = current_yaw
 
     def callback_acceleration_shaker_rescue(self, *values):
         """Handle acceleration from the smartphone to detect shakes and send rescue command."""
