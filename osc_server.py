@@ -16,7 +16,6 @@ ACCEL_THRES = 0.4
 STEER_ANGLE_THRES = 20
 
 ACCEL_ANGLE_THRES = 15
-ACCEL_ANGLE_OFFSET = -50
 
 
 class OSCServer:
@@ -161,9 +160,9 @@ class OSCServer:
         angle = values[0]
 
         acceleration = ACCEL.NEUTRAL
-        if angle < ACCEL_ANGLE_OFFSET - ACCEL_ANGLE_THRES:
+        if angle < - ACCEL_ANGLE_THRES:
             acceleration = ACCEL.NEUTRAL
-        elif angle > ACCEL_ANGLE_OFFSET + ACCEL_ANGLE_THRES:
+        elif angle > ACCEL_ANGLE_THRES:
             acceleration = ACCEL.UP
 
         self.process_acceleration(acceleration)
