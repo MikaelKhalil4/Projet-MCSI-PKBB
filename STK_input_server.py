@@ -17,10 +17,10 @@ YELLOW      = '\033[93m'
 RED         = '\033[91m'
 
 stop        = False
-DEBUG       = False
+DEBUG       = True
 
-address1    = ('localhost', 6006)
-address2    = ('localhost', 6007)
+address1    = ('0.0.0.0', 6006)
+address2    = ('0.0.0.0', 6007)
 
 sock1       = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 sock1.bind(address1)
