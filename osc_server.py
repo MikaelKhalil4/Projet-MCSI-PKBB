@@ -5,34 +5,36 @@ from steering_acceleration import STEER, ACCEL
 import time
 import math
 
-
 last_tap_time = 0
 DOUBLE_TAP_THRESHOLD = 0.5  # Time in seconds between taps to consider it a double tap
 
-#pad
+# pad
 STEER_THRES = 0.4
 ACCEL_THRES = 0.4
 
-#rotations
+# rotations
 STEER_ANGLE_THRES = 20
 
 ACCEL_ANGLE_THRES = 15
 ACCEL_ANGLE_OFFSET = -50
 
+
 class OSCServer:
 
-    def __init__(self,is_collab):
+    def __init__(self, is_collab, _server_address='localhost', _server_port=6006):
 
         self.osc = OSCThreadServer(default_handler=self.dump)
-        self.sock = self.osc.listen(address='0.0.0.0', port=8000, default=True)#c'est le server where the phone need to send its information on
-        self.server_address = ('localhost', 6006)#STK_input_server
+        self.sock = self.osc.listen(address='0.0.0.0', port=8000,
+                                    default=True)  # c'est le server where the phone need to send its information on
+        self.server_address = (_server_address, _server_port)  # STK_input_server
+
         self.variable_initialization()
         self.is_collab = is_collab
 
-        if(self.is_collab):
-          self.bind_callbacks_collab()
-        else:    
-          self.bind_callbacks_perf()
+        if self.is_collab:
+            self.bind_callbacks_collab()
+        else:
+            self.bind_callbacks_perf()
 
     def bind_callbacks_collab(self):
         self.osc.bind(b'/multisense/orientation/pitch', self.callback_pitch_right_left)
@@ -74,15 +76,13 @@ class OSCServer:
         self.shake_count_threshold = 3  # Number of shakes required
         self.accel_history = []
         self.last_shake_time = 0
-        self.previous_yaw=0.0
-        
-        
+        self.previous_yaw = 0.0
+
         self.steering_value = 0.0  # Continuous value between 0 and 1 for steering
         self.steering_direction = STEER.NEUTRAL  # Current steering direction
 
         self.accel_value = 0.0  # Continuous value between 0 and 1 for acceleration
         self.accel_direction = ACCEL.NEUTRAL  # Current acceleration direction
-     
 
         # Control loop variables
         self.loop_running = True
@@ -97,15 +97,13 @@ class OSCServer:
         # Fire detection
         self.last_fire_time = 0
 
-        self.is_nitroing= False
-
-
+        self.is_nitroing = False
 
     def send_data(self, data):
         if len(data) > 0:
             self.client_socket.sendto(data, self.server_address)
 
-    def process_steering(self,steering):
+    def process_steering(self, steering):
         data = b''
         # print("steering : ",steering)
 
@@ -126,15 +124,13 @@ class OSCServer:
 
         self.current_steering = steering
 
-    def process_acceleration(self,acceleration):
+    def process_acceleration(self, acceleration):
         data = b''
         if self.current_accel != ACCEL.NEUTRAL and acceleration == ACCEL.NEUTRAL:
             if self.current_accel == ACCEL.UP:
                 data = b'R_UP'
             elif self.current_accel == ACCEL.DOWN:
                 data = b'R_DOWN'
-
-
 
         if self.current_accel == ACCEL.NEUTRAL and acceleration != ACCEL.NEUTRAL:
             if acceleration == ACCEL.UP:
@@ -147,9 +143,9 @@ class OSCServer:
 
         self.current_accel = acceleration
 
-#coolab:
+    # coolab:
 
-    def callback_pitch_right_left(self,*values):
+    def callback_pitch_right_left(self, *values):
         steering = STEER.NEUTRAL
 
         angle = values[0]
@@ -161,7 +157,7 @@ class OSCServer:
 
         self.process_steering(steering)
 
-    def callback_roll_acc(self,*values):
+    def callback_roll_acc(self, *values):
         angle = values[0]
 
         acceleration = ACCEL.NEUTRAL
@@ -172,9 +168,9 @@ class OSCServer:
 
         self.process_acceleration(acceleration)
 
-#perfo:
+    # perfo:
 
-    def callback_yaw_right_left(self,*values):
+    def callback_yaw_right_left(self, *values):
         # print("Received yaw values: {}".format(values))
         steering = STEER.NEUTRAL
 
@@ -190,7 +186,7 @@ class OSCServer:
     def callback_x_touchpad(self, *values):
         """Handle pad x-axis input for steering."""
 
-        FIRE_WAITING_TIME = 0.5 # Time in seconds to wait before firing again
+        FIRE_WAITING_TIME = 0.5  # Time in seconds to wait before firing again
 
         x = values[0]
 
@@ -208,20 +204,19 @@ class OSCServer:
             # We fire
             if time.time() - self.last_fire_time > FIRE_WAITING_TIME:
                 self.last_fire_time = time.time()
-                self.SendInstantCommande("P_FIRE")
+                self.send_instant_commande("P_FIRE")
 
     def callback_touchup(self, *values):
         if self.is_nitroing:
             self.is_nitroing = False
             self.send_data(b'R_NITRO')
 
-
     def callback_acceleration_shaker_rescue(self, *values):
         """Handle acceleration from the smartphone to detect shakes and send rescue command."""
-        DERIVATIVE_THRESHOLD = 3 # The amount of acceleration change required to detect a shake
-        SHAKE_DURATION = 1.0 # Time window to detect shakes
+        DERIVATIVE_THRESHOLD = 3  # The amount of acceleration change required to detect a shake
+        SHAKE_DURATION = 1.0  # Time window to detect shakes
 
-        LAST_RESCUE_TIME = 1.0 # Minimum time between rescue commands
+        LAST_RESCUE_TIME = 1.0  # Minimum time between rescue commands
 
         y_accel = values[0]
 
@@ -251,7 +246,7 @@ class OSCServer:
             if current_time - self.last_rescue_time > LAST_RESCUE_TIME:
                 self.last_rescue_time = current_time
                 print("Shake detected!")
-                self.SendInstantCommande("P_RESCUE")
+                self.send_instant_commande("P_RESCUE")
 
     def control_loop(self):
         """Infinite loop running at a target frequency to manage pressed and released commands."""
@@ -346,32 +341,32 @@ class OSCServer:
             # Reset acceleration direction if released
             self.accel_direction = ACCEL.NEUTRAL
 
-    def SendInstantCommande(self,commande):
-        """Used to send an action command (fire, rescue etc) to the server by first pressing the key then releasing it"""
+    def send_instant_commande(self, command):
+        """Used to send an action command (fire, rescue etc) to the server by first pressing the key then releasing
+        it"""
 
-        DELAY = 0.2 # Delay in seconds before sending the release command
+        delay = 0.2  # Delay in seconds before sending the release command
 
-        if commande == "P_RESCUE":
+        if command == "P_RESCUE":
             data = b'P_RESCUE'
             self.client_socket.sendto(data, self.server_address)
-            # Programme un envoie de la commande R_RESCUE dans DELAY
-            timer = threading.Timer(DELAY, self.SendInstantCommande, ["R_RESCUE"])
+            # Programme un envoie de la commande R_RESCUE dans delay
+            timer = threading.Timer(delay, self.send_instant_commande, ["R_RESCUE"])
             timer.start()
 
-        elif commande == "P_FIRE":
+        elif command == "P_FIRE":
             data = b'P_FIRE'
             self.client_socket.sendto(data, self.server_address)
-            # Programme un envoie de la commande R_FIRE dans DELAY
-            timer = threading.Timer(DELAY, self.SendInstantCommande, ["R_FIRE"])
+            # Programme un envoie de la commande R_FIRE dans delay
+            timer = threading.Timer(delay, self.send_instant_commande, ["R_FIRE"])
             timer.start()
 
-        elif commande == "R_RESCUE":
+        elif command == "R_RESCUE":
             data = b'R_RESCUE'
             self.client_socket.sendto(data, self.server_address)
             has_rescued = False
 
-        elif commande == "R_FIRE":
+        elif command == "R_FIRE":
             data = b'R_FIRE'
             self.client_socket.sendto(data, self.server_address)
             has_fired = False
-

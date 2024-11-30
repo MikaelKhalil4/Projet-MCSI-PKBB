@@ -19,14 +19,27 @@ RED         = '\033[91m'
 stop        = False
 DEBUG       = True
 
-address1    = ('0.0.0.0', 6006)
-address2    = ('0.0.0.0', 6007)
+address1    = ('0.0.0.0', 6006) # Port used for OSC Controller
+address2    = ('0.0.0.0', 6007) # Port used by the QR Code Detection
+address3    = ('0.0.0.0', 6008) # Port used by the Voice Action
+address4    = ('0.0.0.0', 6009) # Port used by arduino
+address5    = ('0.0.0.0', 60010) # Port used by Face Tracking
+
 
 sock1       = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 sock1.bind(address1)
 
 sock2       = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 sock2.bind(address2)
+
+sock3       = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+sock3.bind(address3)
+
+sock4       = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+sock4.bind(address4)
+
+sock5       = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+sock5.bind(address5)
 
 #list of tuples: (received command, keyboard key, keyboard func )
 bindings    = [ ['UP', 'up', keyboard.press_and_release],
@@ -95,19 +108,28 @@ if len(sys.argv) > 1:
 
 print()
 print('STK input server started ', end='')
-if DEBUG:   
+if DEBUG:
     print(GREEN + '(Debug mode)' + WHITE)
-else:       
+else:
     print()
 
 # Create threads to handle each socket
 thread1 = threading.Thread(target=handle_socket, args=(sock1,))
 thread2 = threading.Thread(target=handle_socket, args=(sock2,))
+thread3 = threading.Thread(target=handle_socket, args=(sock3,))
+thread4 = threading.Thread(target=handle_socket, args=(sock4,))
+thread5 = threading.Thread(target=handle_socket, args=(sock5,))
 
 thread1.start()
 thread2.start()
+thread3.start()
+thread4.start()
+thread5.start()
 
 thread1.join()
 thread2.join()
+thread3.join()
+thread4.join()
+thread5.join()
 
 print('STK input server stopped')

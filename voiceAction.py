@@ -6,15 +6,16 @@ import socket
 import time
 from vosk import Model, KaldiRecognizer
 
+
 class AudioProcessor:
-    def __init__(self, model_path, target_word="fire", server_address=('localhost', 6007)):
+    def __init__(self, model_path, target_word="fire", _server_address='localhost', _server_port=6008):
         self.model_path = model_path
         self.target_word = target_word.lower()
         self.audio_queue = queue.Queue()
         self.running = True
         self.last_detection_time = 0
         self.detection_cooldown = 2.0  # Cooldown period in seconds
-        self.server_address = server_address
+        self.server_address = (_server_address, _server_port)
 
         # Initialize model and recognizer
         try:
@@ -22,7 +23,7 @@ class AudioProcessor:
             self.recognizer = KaldiRecognizer(self.model, 16000)
         except Exception as e:
             raise Exception(f"Failed to load model: {str(e)}")
-        
+
         # Setup socket for sending commands
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
@@ -59,7 +60,7 @@ class AudioProcessor:
             if current_time - self.last_detection_time >= self.detection_cooldown:
                 print(f"\nINSTANT DETECTION: '{self.target_word.upper()}'!")
                 print(f"Recognized text: {text}")
-                
+
                 # Send command to server immediately
                 self.send_command()
                 self.last_detection_time = current_time
@@ -68,7 +69,7 @@ class AudioProcessor:
         """Send the 'FIRE' command to the server"""
         try:
             self.sock.sendto(b"P_FIRE", self.server_address)
-            
+
             print("Command 'FIRE' sent to server.")
             time.sleep(1)
             self.sock.sendto(b"R_FIRE", self.server_address)
@@ -103,6 +104,7 @@ class AudioProcessor:
                 stream.close()
             self.sock.close()
 
+
 def main():
     try:
         # Update this path to your model location
@@ -113,6 +115,6 @@ def main():
         print(f"Fatal error: {str(e)}", file=sys.stderr)
         sys.exit(1)
 
+
 if __name__ == "__main__":
     main()
- 

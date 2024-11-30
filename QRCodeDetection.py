@@ -3,7 +3,6 @@ import threading
 import cv2
 
 
-
 class QRDetector:
     """
 
@@ -19,14 +18,14 @@ class QRDetector:
         - "LOOKBACK" : Active le regard en arrière
     """
 
-    def __init__(self, _adress= 'localhost', _port= 6007):
+    def __init__(self, _server_address='localhost', _server_port=6007):
 
         self.camera_id = 0
         self.delay = 1
         self.window_name = 'QR Code Detector'
 
         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.address = (_adress, _port)
+        self.server_address = (_server_address, _server_port)
 
         self.qcd = cv2.QRCodeDetector()
         self.cap = cv2.VideoCapture(self.camera_id)
@@ -45,16 +44,14 @@ class QRDetector:
         self.frame_since_lookback = 0
         self.max_frame_without_lookback = 20
 
-
         self.has_fired = False
         self.has_rescued = False
 
-    def Recognize_QR_Code(self, frame):
+    def recognize_qr_code(self, frame):
 
         view_nitro = False
         view_skidding = False
         view_lookback = False
-
 
         ret_qr, decoded_info, points, _ = self.qcd.detectAndDecodeMulti(frame)
 
@@ -72,11 +69,11 @@ class QRDetector:
                         self.frame_since_lookback = 0
                     elif s == "FIRE":
                         if not self.has_fired:
-                            self.SendInstantCommande("P_FIRE")
+                            self.send_instant_commande("P_FIRE")
                             self.has_fired = True
                     elif s == "RESCUE":
                         if not self.has_rescued:
-                            self.SendInstantCommande("P_RESCUE")
+                            self.send_instant_commande("P_RESCUE")
                             self.has_rescued = True
                     else:
                         print("Unknown QR Code : " + s)
@@ -86,11 +83,11 @@ class QRDetector:
                 frame = cv2.polylines(frame, [p.astype(int)], True, color, 8)
 
         # Handle the commands
-        self.HandleNitro(view_nitro)
-        self.HandleSkidding(view_skidding)
-        self.HandleLookback(view_lookback)
+        self.handle_nitro(view_nitro)
+        self.handle_skidding(view_skidding)
+        self.handle_lookback(view_lookback)
 
-    def HandleNitro(self, view_nitro):
+    def handle_nitro(self, view_nitro):
         # If the QR Code was seen this frame
         if view_nitro:
             # Reset the nitro counter
@@ -99,20 +96,21 @@ class QRDetector:
             # If the nitro is not already activated we send the command to the server
             if not self.is_nitroing:
                 data = b'P_NITRO'
-                self.client_socket.sendto(data, self.address)
+                self.client_socket.sendto(data, self.server_address)
                 self.is_nitroing = True
 
         # If the QR wasn't seen this frame, we increase the nitro counter
         else:
             self.frame_since_nitro += 1
-        # If the nitro counter is above the limit and the nitro is activated, we send the command to the server to stop the nitro
+        # If the nitro counter is above the limit and the nitro is activated, we send the command to the server to
+        # stop the nitro
         if self.frame_since_nitro >= self.max_frame_without_turbo:
             if self.is_nitroing:
                 data = b'R_NITRO'
-                self.client_socket.sendto(data, self.address)
+                self.client_socket.sendto(data, self.server_address)
             self.is_nitroing = False
 
-    def HandleSkidding(self, view_skidding):
+    def handle_skidding(self, view_skidding):
         # If the QR Code was seen this frame
         if view_skidding:
             # Reset the skidding counter
@@ -121,20 +119,21 @@ class QRDetector:
             # If the skidding is not already activated we send the command to the server
             if not self.is_skidding:
                 data = b'P_SKIDDING'
-                self.client_socket.sendto(data, self.address)
+                self.client_socket.sendto(data, self.server_address)
                 self.is_skidding = True
 
         # If the QR wasn't seen this frame, we increase the skidding counter
         else:
             self.frame_since_skidding += 1
-        # If the skidding counter is above the limit and the skidding is activated, we send the command to the server to stop the skidding
+        # If the skidding counter is above the limit and the skidding is activated, we send the command to the server
+        # to stop the skidding
         if self.frame_since_skidding >= self.max_frame_without_skidding:
             if self.is_skidding:
                 data = b'R_SKIDDING'
-                self.client_socket.sendto(data, self.address)
+                self.client_socket.sendto(data, self.server_address)
             self.is_skidding = False
 
-    def HandleLookback(self, view_lookback):
+    def handle_lookback(self, view_lookback):
         # If the QR Code was seen this frame
         if view_lookback:
             # Reset the lookback counter
@@ -143,53 +142,52 @@ class QRDetector:
             # If the lookback is not already activated we send the command to the server
             if not self.is_lookbacking:
                 data = b'P_LOOKBACK'
-                self.client_socket.sendto(data, self.address)
+                self.client_socket.sendto(data, self.server_address)
                 self.is_lookbacking = True
 
         # If the QR wasn't seen this frame, we increase the lookback counter
         else:
             self.frame_since_lookback += 1
-        # If the lookback counter is above the limit and the lookback is activated, we send the command to the server to stop the lookback
+        # If the lookback counter is above the limit and the lookback is activated, we send the command to the server
+        # to stop the lookback
         if self.frame_since_lookback >= self.max_frame_without_lookback:
             if self.is_lookbacking:
                 data = b'R_LOOKBACK'
-                self.client_socket.sendto(data, self.address)
+                self.client_socket.sendto(data, self.server_address)
             self.is_lookbacking = False
 
-    def SendInstantCommande(self, commande):
-        if commande == "P_RESCUE":
+    def send_instant_commande(self, command):
+        if command == "P_RESCUE":
             data = b'P_RESCUE'
-            self.client_socket.sendto(data, self.address)
+            self.client_socket.sendto(data, self.server_address)
             # Programme un envoie de la commande R_RESCUE dans 2 secondes
-            timer = threading.Timer(self.release_delay, self.SendInstantCommande, ["R_RESCUE"])
+            timer = threading.Timer(self.release_delay, self.send_instant_commande, ["R_RESCUE"])
             timer.start()
 
-        elif commande == "P_FIRE":
+        elif command == "P_FIRE":
             data = b'P_FIRE'
-            self.client_socket.sendto(data, self.address)
+            self.client_socket.sendto(data, self.server_address)
             # Programme un envoie de la commande R_FIRE dans 2 secondes
-            timer = threading.Timer(self.release_delay, self.SendInstantCommande, ["R_FIRE"])
+            timer = threading.Timer(self.release_delay, self.send_instant_commande, ["R_FIRE"])
             timer.start()
 
-        elif commande == "R_RESCUE":
+        elif command == "R_RESCUE":
             data = b'R_RESCUE'
-            self.client_socket.sendto(data, self.address)
+            self.client_socket.sendto(data, self.server_address)
             self.has_rescued = False
 
-        elif commande == "R_FIRE":
+        elif command == "R_FIRE":
             data = b'R_FIRE'
-            self.client_socket.sendto(data, self.address)
+            self.client_socket.sendto(data, self.server_address)
             self.has_fired = False
 
     def run(self):
         while True:
             ret, frame = self.cap.read()
 
-
             if ret:
-                self.Recognize_QR_Code(frame)
+                self.recognize_qr_code(frame)
                 cv2.imshow(self.window_name, frame)
-
 
             if cv2.waitKey(self.delay) & 0xFF == ord('q'):
                 break

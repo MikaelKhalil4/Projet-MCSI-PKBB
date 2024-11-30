@@ -35,7 +35,7 @@ from mediapipe.tasks.python import vision
 
 
 class FaceTracking:
-    def __init__(self):
+    def __init__(self, _server_address='localhost', _server_port=6006):
         self.fl = 590
         self.screen_heigth = 21.6
         self.REAL_IPD = 6.3
@@ -46,11 +46,11 @@ class FaceTracking:
 
         print(f"Tracking initialized with an interpupillary distance of {self.user_ipd} cm")
 
-        self.address = "127.0.0.1"
-        self.port = 6006
+        self.server_address = _server_address
+        self.server_port = _server_port
 
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)  # Create a UDP socket
-        print("OSC connection established to " + self.address + " on port " + str(self.port) + "!")
+        print("OSC connection established to " + self.server_address + " on port " + str(self.server_port) + "!")
 
         self.cap = cv2.VideoCapture(0)
         self.first_time = time.time() * 1000.0
@@ -86,7 +86,7 @@ class FaceTracking:
     def send_udp_command(self, command):
         # Send a command via UDP
         print(f"Sending command: {command}")
-        self.sock.sendto(command.encode(), (self.address, self.port))
+        self.sock.sendto(command.encode(), (self.server_address, self.server_port))
 
     def visualize(self, image, detection_result) -> np.ndarray:
         """Draws bounding boxes and keypoints on the input image and return it.
