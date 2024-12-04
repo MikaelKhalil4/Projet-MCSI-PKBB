@@ -108,7 +108,7 @@ class AudioProcessor:
 def main():
     try:
         # Update this path to your model location
-        model_path = r"C:\Users\DELL\Desktop\Yassine\Projet-MCSI-PKBB\model\vosk-model-small-en-us-0.15"
+        model_path = r"model\vosk-model-small-en-us-0.15"
         processor = AudioProcessor(model_path)
         processor.run()
     except Exception as e:

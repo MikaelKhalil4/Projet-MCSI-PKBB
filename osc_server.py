@@ -15,7 +15,7 @@ ACCEL_THRES = 0.4
 # rotations
 STEER_ANGLE_THRES = 20
 
-ACCEL_ANGLE_THRES = 15
+ACCEL_ANGLE_THRES = 10
 
 
 class OSCServer:
@@ -36,8 +36,8 @@ class OSCServer:
             self.bind_callbacks_perf()
 
     def bind_callbacks_collab(self):
-        self.osc.bind(b'/multisense/orientation/pitch', self.callback_pitch_right_left)
-        self.osc.bind(b'/multisense/orientation/roll', self.callback_roll_acc)
+        self.osc.bind(b'/multisense/orientation/roll', self.callback_roll_right_left)
+        self.osc.bind(b'/multisense/orientation/pitch', self.callback_pitch_acc)
 
     def bind_callbacks_perf(self):
         self.osc.bind(b'/multisense/orientation/yaw', self.callback_yaw_right_left)
@@ -144,7 +144,7 @@ class OSCServer:
 
     # coolab:
 
-    def callback_pitch_right_left(self, *values):
+    def callback_roll_right_left(self, *values):
         steering = STEER.NEUTRAL
 
         angle = values[0]
@@ -156,14 +156,14 @@ class OSCServer:
 
         self.process_steering(steering)
 
-    def callback_roll_acc(self, *values):
+    def callback_pitch_acc(self, *values):
         angle = values[0]
 
         acceleration = ACCEL.NEUTRAL
         if angle < - ACCEL_ANGLE_THRES:
-            acceleration = ACCEL.NEUTRAL
-        elif angle > ACCEL_ANGLE_THRES:
             acceleration = ACCEL.UP
+        elif angle > ACCEL_ANGLE_THRES:
+            acceleration = ACCEL.NEUTRAL
 
         self.process_acceleration(acceleration)
 

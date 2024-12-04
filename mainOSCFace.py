@@ -22,15 +22,14 @@ def main_osc_face():
         print("\nInvalid input! Please enter c or p.")
         user_input = input("Which mode do you want to launch : 'c' for collaboration mode, 'p' for performance mode : ")
     # Validate and convert input to a boolean
-    if user_input == "c":
-        is_collab = True
-        tracker = FaceTracking(server_address, face_port)
-        tracker.runtracking()
-
-    elif user_input == "p":
-        is_collab = False
+    is_collab = user_input == "c"
 
     osc_server = OSCServer(is_collab, server_address, osc_port)
+
+    if is_collab:
+        tracker = FaceTracking(server_address, face_port)
+        tracker.runtracking()
+        print("Tracker launched")
 
     try:
         sleep(1000)

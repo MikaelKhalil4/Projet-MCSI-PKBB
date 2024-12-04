@@ -227,7 +227,7 @@ class FaceTracking:
                     ibe_x = (right_eye_px[0] + left_eye_px[0]) / 2
                     ibe_y = (right_eye_px[1] + left_eye_px[1]) / 2
                     pos_x, pos_y, pos_z = self.compute3DPos(ibe_x, ibe_y, ipd_pixels)
-                    print(f"3D position: {pos_x:.2f} - {pos_y:.2f} - {pos_z:.2f}")
+                    #print(f"3D position: {pos_x:.2f} - {pos_y:.2f} - {pos_z:.2f}")
 
                     # Head movements mapped to game controls
                     if pos_x >10:  # Turn right
