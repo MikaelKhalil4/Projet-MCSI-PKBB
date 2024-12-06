@@ -6,16 +6,18 @@ import socket
 import time
 from vosk import Model, KaldiRecognizer
 
+from Reworked import GamepadController
 
-class AudioProcessor:
-    def __init__(self, model_path, target_word="fire", _server_address='localhost', _server_port=6008):
+
+class VoiceActionReworked:
+    def __init__(self, gamepad_controller : GamepadController, model_path = r"model\vosk-model-small-en-us-0.15", target_word="fire"):
         self.model_path = model_path
         self.target_word = target_word.lower()
         self.audio_queue = queue.Queue()
         self.running = True
         self.last_detection_time = 0
         self.detection_cooldown = 2.0  # Cooldown period in seconds
-        self.server_address = (_server_address, _server_port)
+        self.gc = gamepad_controller
 
         # Initialize model and recognizer
         try:
@@ -24,8 +26,6 @@ class AudioProcessor:
         except Exception as e:
             raise Exception(f"Failed to load model: {str(e)}")
 
-        # Setup socket for sending commands
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     def audio_callback(self, indata, frames, time_info, status):
         """Callback function for audio stream"""
@@ -68,11 +68,7 @@ class AudioProcessor:
     def send_fire_command(self):
         """Send the 'FIRE' command to the server"""
         try:
-            self.sock.sendto(b"P_FIRE", self.server_address)
-
-            print("Command 'FIRE' sent to server.")
-            time.sleep(1)
-            self.sock.sendto(b"R_FIRE", self.server_address)
+            self.gc.send_instant_command("FIRE")
         except Exception as e:
             print(f"Failed to send command: {str(e)}", file=sys.stderr)
 
@@ -102,15 +98,15 @@ class AudioProcessor:
         finally:
             if 'stream' in locals():
                 stream.close()
-            self.sock.close()
+            
 
 
 def main():
     try:
         # Update this path to your model location
         model_path = r"model\vosk-model-small-en-us-0.15"
-        processor = AudioProcessor(model_path)
-        processor.run()
+        #processor = AudioProcessor(model_path)
+        #processor.run()
     except Exception as e:
         print(f"Fatal error: {str(e)}", file=sys.stderr)
         sys.exit(1)

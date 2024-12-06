@@ -1,9 +1,7 @@
 from oscpy.server import OSCThreadServer
-import socket
-import threading
 import time
 
-from GamepadController import GamepadController
+from Reworked.GamepadController import GamepadController
 
 
 class OSCServerReworked:
@@ -80,9 +78,9 @@ class OSCServerReworked:
         Accel_angle = -5
 
         if pitch < Accel_angle:
-            self.gc.press_button("A")
+            self.gc.send_command("P_UP")
         else:
-            self.gc.release_button("A")
+            self.gc.send_command("R_UP")
 
     def callback_yaw_right_left(self, *values):
         # Used in perf to turn right or left
@@ -104,10 +102,10 @@ class OSCServerReworked:
         # We can only get a single point on the touchPad
         # On the right of the screen :
         #   - Simple tap + hold : Nitro
-        #   - Double tap + hold :
+        #   - Double tap + hold : Skid
         # On the left of the screen :
         #   - Simple tap : Fire
-        #   - Double tap : Rescue
+        #   - Double tap : Lookback
 
         if self.actionned:
             return
@@ -127,7 +125,7 @@ class OSCServerReworked:
                     # We double tapped
                     # print("Double tap right")
                     self.actionned = True
-                    self.gc.press_button("RB")
+                    self.gc.send_command("P_SKIDDING")
 
                 else:
                     # We pressed right, we have to wait until we are sure it's not a double tap
@@ -140,7 +138,7 @@ class OSCServerReworked:
                     # print("Simple Tap right")
                     # We have simple pressed and hold right, we trigger the nitro
                     self.actionned = True
-                    self.gc.press_button("LB")
+                    self.gc.send_command("P_NITRO")
 
             self.is_right_pressed = True
 
@@ -154,7 +152,7 @@ class OSCServerReworked:
                     # We double tapped so we look back
                     # print("Double tap left")
                     self.actionned = True
-                    self.gc.press_button("Y")
+                    self.gc.send_command("P_LOOKBACK")
 
                 else:
                     # We pressed left, we have to wait until we are sure it's not a double tap
@@ -167,16 +165,15 @@ class OSCServerReworked:
                     # print("Simple Tap left")
                     # We have simple pressed right so we fire
                     self.actionned = True
-                    self.gc.press_button("B")
+                    self.gc.send_instant_command("FIRE")
 
             self.is_left_pressed = True
 
     def callback_touchup(self, *values):
         # Release every button when we release the touchpad
-        self.gc.release_button("LB", False)
-        self.gc.release_button("RB", False)
-        self.gc.release_button("B", False)
-        self.gc.release_button("BACK", True)
+        self.gc.send_command("R_SKIDDING", True)
+        self.gc.send_command("R_NITRO", True)
+        self.gc.send_command("R_LOOKBACK", True)
         self.actionned = False
         self.is_right_pressed = False
         self.is_left_pressed = False
@@ -216,7 +213,7 @@ class OSCServerReworked:
             if current_time - self.last_rescue_time > LAST_RESCUE_TIME:
                 self.last_rescue_time = current_time
                 print("Shake detected!")
-                self.gc.press_button("Y")
+                self.gc.send_instant_command("RESCUE")
 
     def stop(self):
         self.osc.close()
