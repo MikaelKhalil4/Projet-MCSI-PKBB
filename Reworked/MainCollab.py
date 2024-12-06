@@ -8,7 +8,7 @@ from Reworked.voiceActionReworked import VoiceActionReworked
 if __name__ == "__main__":
     gamepadController = GamepadController(True)
 
-    osc_server_reworked = OSCServerReworked(gamepadController, False)
+    osc_server_reworked = OSCServerReworked(gamepadController, True)
 
     qr_code_reworked = QRDetectorReworked(gamepadController)
     timer_qr = threading.Timer(1, qr_code_reworked.run, [])
