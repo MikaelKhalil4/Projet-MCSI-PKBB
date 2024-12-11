@@ -93,8 +93,8 @@ class ArduinoUltrasoundReader:
                         if '#' in line:
                             # Séparer les données des deux capteurs
                             accel_data, brake_data = line.split('#')
-                            print(f"Distance de l'accélérateur: {accel_data} cm")
-                            print(f"Distance du frein: {brake_data} cm")
+                            # print(f"Distance de l'accélérateur: {accel_data} cm")
+                            # print(f"Distance du frein: {brake_data} cm")
 
                             # If the data is less than the threshold, we consider the pedal is pressed
 

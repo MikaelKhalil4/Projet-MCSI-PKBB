@@ -13,7 +13,7 @@ if __name__ == "__main__":
 
     arduino_reworked = ArduinoReworked(gamepadController)
 
-    port = "COM3"
+    port = "COM6"
     timer_arduino = threading.Timer(1, arduino_reworked.read_ultrasound_data, [port])
     timer_arduino.start()
 

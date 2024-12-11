@@ -10,7 +10,7 @@ class OSCServerReworked:
         self.gc = gamepad_controller
 
         self.osc = OSCThreadServer(default_handler=self.dump)
-        self.sock = self.osc.listen(address='0.0.0.0', port=8000,
+        self.sock = self.osc.listen(address='0.0.0.0', port=8001,
                                     default=True)
 
         if is_collab:
@@ -67,7 +67,7 @@ class OSCServerReworked:
         # Map the roll value to -1,1
         roll = roll / max_angle
 
-        self.gc.steer(roll)
+        self.gc.steer(-roll)
 
     def callback_pitch_acc(self, *values):
         # Used in collab to accelerate
@@ -75,7 +75,7 @@ class OSCServerReworked:
 
         # If angle is less than a value, we accelerate
 
-        Accel_angle = -5
+        Accel_angle = -10
 
         if pitch < Accel_angle:
             self.gc.send_command("P_UP")
